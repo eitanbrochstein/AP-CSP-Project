@@ -1,5 +1,15 @@
 import numpy as np
 import pygame
+import customtkinter as ctk
+import sounddevice as sd
+from frequencies import note_to_frequency
+
+current_hz = 0.0
+is_tuning = False
+audio_stream = None
+note_to_tune = None
+target_hz = 0.0
+button_to_tune = None
 
 pygame.mixer.init()
 
@@ -61,3 +71,73 @@ def play_synth_tone(note_name):
         sound.play()
     except FileNotFoundError:
         print(f"Could not find audio file for {note_name}!")
+
+
+def process_audio(indata, frames, time, status):
+    global current_hz
+
+    audio_data = indata.flatten()
+    fft_data = np.fft.rfft(audio_data)
+    frequencies = np.fft.rfftfreq(len(audio_data), 1.0 / 44100)
+    magnitudes = np.abs(fft_data)
+
+    peak_index = np.argmax(magnitudes)
+    loudest_freq = frequencies[peak_index]
+    peak_volume = magnitudes[peak_index]
+
+    if target_hz > 0 and (target_hz * 1.8) <= loudest_freq <= (target_hz * 2.2):
+        loudest_freq = loudest_freq / 2.0
+
+    min_hz = 70.0
+    max_hz = 1500.0
+    volume_threshold = 0.5
+
+    if target_hz > 0 and abs(loudest_freq - target_hz) > 40:
+        return
+
+    if peak_volume > volume_threshold and min_hz <= loudest_freq <= max_hz:
+        current_hz = round(loudest_freq, 2)
+
+def tune_string(index: int, button: ctk.CTkButton, strings_to_tune, update_tuning_callback):
+    global button_to_tune
+    global is_tuning, audio_stream, target_hz, note_to_tune
+    if button_to_tune == button and is_tuning:
+        is_tuning = False
+        button_to_tune = None
+        note_to_tune = None
+        if audio_stream:
+            audio_stream.stop()
+            audio_stream.close()
+    else:
+        is_tuning = True
+        button_to_tune = button
+        note = strings_to_tune[index][0]
+        play_synth_tone(note)
+        get_note_frequency = note_to_frequency(note)
+
+        note_to_tune = note
+        target_hz = get_note_frequency
+        audio_stream = sd.InputStream(channels=1, samplerate=44100, blocksize=8192, callback=process_audio)
+        audio_stream.start()
+
+        update_tuning_callback()
+
+def tune_up(index: int, button: ctk.CTkButton, strings_to_tune, error_callback=None):
+    note = strings_to_tune[index][0]
+    note_position = string_list.index(note)
+    if note_position < len(string_list) - 1 and note_to_tune is None:
+        new_note = string_list[note_position + 1]
+        strings_to_tune[index][0] = new_note
+        button.configure(text=new_note)
+    elif note_to_tune is not None and error_callback is not None:
+        error_callback("You can't change the note while tuning.")
+
+def tune_down(index: int, button: ctk.CTkButton, strings_to_tune, error_callback=None):
+    note = strings_to_tune[index][0]
+    note_position = string_list.index(note)
+    if note_position > 0 and note_to_tune is None:
+        new_note = string_list[note_position - 1]
+        strings_to_tune[index][0] = new_note
+        button.configure(text=new_note)
+    elif note_to_tune is not None and error_callback is not None:
+        error_callback("You can't change the note while tuning.")
