@@ -1,9 +1,17 @@
 import customtkinter as ctk
 import math
+import sys
 import tkinter as tk
 import sounddevice as sd
 import numpy as np
 from PIL import Image
+
+if sys.platform == "win32":
+    UI_FONT = "Segoe UI"
+elif sys.platform == "darwin":
+    UI_FONT = ".AppleSystemUIFont"
+else:
+    UI_FONT = "DejaVu Sans"
 from frequencies import note_to_frequency
 from guitar import play_synth_tone, string_list
 
@@ -82,7 +90,6 @@ def tune_string(index: int, button: ctk.CTkButton):
 
         note_to_tune = note
         target_hz = get_note_frequency
-        print(f"{note_to_tune} -> {get_note_frequency}")
         audio_stream = sd.InputStream(channels=1, samplerate=44100, blocksize=4096, callback=process_audio)
         audio_stream.start()
 
@@ -125,7 +132,7 @@ guitar_label.place(x=145, y=125)
 guitar_tuner_label = ctk.CTkLabel(master=app,
                                   text="Guitar Tuner",
                                   width=800,
-                                  font=(".AppleSystemUIFont", 50, "bold"),
+                                  font=(UI_FONT, 50, "bold"),
                                   anchor="center")
 guitar_tuner_label.place(x=0, y=15)
 
@@ -136,7 +143,7 @@ for i, string in enumerate(strings_to_tune):
     
     string_btn = ctk.CTkButton(master=app,
                         text=string[0],
-                        font=(".AppleSystemUIFont", 40, "bold"),
+                        font=(UI_FONT, 40, "bold"),
                         width=btn_size,
                         height=btn_size,
                         border_spacing=10,
@@ -152,14 +159,14 @@ for i, string in enumerate(strings_to_tune):
 
     tuning_label = ctk.CTkLabel(master=app,
                                 text=f"{i+1}:",
-                                font=(".AppleSystemUIFont", 30, "bold"),
+                                font=(UI_FONT, 30, "bold"),
                                 anchor="center"
                                 )
     tuning_label.place(x=900, y=(i*125)+30)
 
     tune_up_button = ctk.CTkButton(master=app,
                             text="↑",
-                            font=(".AppleSystemUIFont", 30, "bold"),
+                            font=(UI_FONT, 30, "bold"),
                             fg_color="#3c3c3c",
                             hover_color="#3c3c3c",
                             anchor="center",
@@ -168,12 +175,12 @@ for i, string in enumerate(strings_to_tune):
                             width=0,
                             height=60)
     
-    tune_up_button.place(x=850, y=(i*125)+75)
+    tune_up_button.place(x=860, y=(i*125)+75)
     tune_up_button.configure(command=lambda idx=i, button=string_btn: tune_up(idx, button))
 
     tune_down_button = ctk.CTkButton(master=app,
                             text="↓",
-                            font=(".AppleSystemUIFont", 30, "bold"),
+                            font=(UI_FONT, 30, "bold"),
                             fg_color="#3c3c3c",
                             hover_color="#3c3c3c",
                             anchor="center",
@@ -212,7 +219,7 @@ tuner_meter.place(x=175, y=700)
 
 tuner_text = ctk.CTkLabel(master=app,
                           text="Start Tuning!",
-                          font=(".AppleSystemUIFont", 30, "bold"),
+                          font=(UI_FONT, 30, "bold"),
                           bg_color="transparent")
 tuner_text.place(in_=tuner_meter, relx=0.5, rely=0.5, anchor="center")
 
