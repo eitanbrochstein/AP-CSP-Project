@@ -38,4 +38,4 @@ def get_microphone_frequency():
     
     dominant_frequency = frequencies[peak_index]
     
-    return round(dominant_frequency, 2)
+    return dominant_frequency

@@ -25,10 +25,6 @@ app.iconphoto(True, app_logo)
 
 app.configure(fg_color="#1a1a1a")
 
-
-def error_msg(message: str, title: str = "Error"):
-    messagebox.showerror(title, message)
-
 strings_to_tune = [
     ["E2", 25, 500],
     ["A2", 25, 300],
@@ -142,14 +138,14 @@ tuner_text.place(in_=tuner_meter, relx=0.5, rely=0.5, anchor="center")
 def update_tuning():
     if guitar.is_tuning:
         if guitar.current_hz > 0:
-            diff = (guitar.current_hz - guitar.target_hz) * 10
-            meter_value = 0.5 + (diff / 200)
+            cents = 1200 * math.log2(guitar.current_hz / guitar.target_hz)
+            meter_value = 0.5 + (cents / 100)
             tuner_meter.set(max(0, min(1, meter_value)))
-            tuner_text.configure(text=round(diff))
+            tuner_text.configure(text=f"{round(cents)} ¢")
 
-            if abs(diff) <= 10:
+            if abs(cents) <= 5:
                 tuner_meter.configure(progress_color="#1DB954")
-            elif diff > 10:
+            elif cents > 5:
                 tuner_meter.configure(progress_color="#FF4B4B")
             else:
                 tuner_meter.configure(progress_color="#3B8ED0")
@@ -159,5 +155,25 @@ def update_tuning():
         tuner_meter.configure(progress_color="#3B8ED0")
     app.after(50, update_tuning)
 
+# Error Message
+
+def click_error_msg(error_msg: ctk.CTkButton):
+    error_label.place_forget()
+
+error_label = ctk.CTkButton(master=app, 
+                            text="",
+                            anchor="center",
+                            font=(UI_FONT, 30, "bold"),
+                            fg_color="#FF746C",
+                            hover_color="#FF746C",
+                            height=70,
+                            corner_radius=50.0)
+
+error_label.place_forget()
+error_label.configure(command=lambda error=error_label: click_error_msg(error))
+
+def error_msg(message: str, title: str = "Error"):
+    error_label.place(x=175, y=50)
+    error_label.configure(text=message)
 
 app.mainloop()

@@ -82,7 +82,16 @@ def process_audio(indata, frames, time, status):
     magnitudes = np.abs(fft_data)
 
     peak_index = np.argmax(magnitudes)
-    loudest_freq = frequencies[peak_index]
+
+    # Parabolic interpolation for sub-bin accuracy
+    if 1 <= peak_index < len(magnitudes) - 1:
+        alpha = magnitudes[peak_index - 1]
+        beta = magnitudes[peak_index]
+        gamma = magnitudes[peak_index + 1]
+        correction = 0.5 * (alpha - gamma) / (alpha - 2 * beta + gamma)
+        loudest_freq = frequencies[peak_index] + correction * (frequencies[1] - frequencies[0])
+    else:
+        loudest_freq = frequencies[peak_index]
     peak_volume = magnitudes[peak_index]
 
     if target_hz > 0 and (target_hz * 1.8) <= loudest_freq <= (target_hz * 2.2):
@@ -117,7 +126,7 @@ def tune_string(index: int, button: ctk.CTkButton, strings_to_tune, update_tunin
 
         note_to_tune = note
         target_hz = get_note_frequency
-        audio_stream = sd.InputStream(channels=1, samplerate=44100, blocksize=8192, callback=process_audio)
+        audio_stream = sd.InputStream(channels=1, samplerate=44100, blocksize=16384, callback=process_audio)
         audio_stream.start()
 
         update_tuning_callback()
