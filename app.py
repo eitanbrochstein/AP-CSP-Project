@@ -18,30 +18,58 @@ app.iconphoto(True, app_logo)
 current_hz = 0.0 
 is_tuning = False
 audio_stream = None
+note_to_tune = None
+
+target_hz = 0.0
+sustain_count = 0
+last_detected_hz = 0
+
 
 button_to_tune = None
 
 def process_audio(indata, frames, time, status):
-    global current_hz
+    global current_hz, target_hz
     
+    # 1. Process the raw audio
     audio_data = indata.flatten() 
-    
     fft_data = np.fft.rfft(audio_data)
     frequencies = np.fft.rfftfreq(len(audio_data), 1.0 / 44100)
     magnitudes = np.abs(fft_data)
     
-    # Find the loudest pitch
+    # 2. Find the loudest pitch
     peak_index = np.argmax(magnitudes)
+    loudest_freq = frequencies[peak_index]
+    peak_volume = magnitudes[peak_index]
     
-    if magnitudes[peak_index] > 0.1: 
-        current_hz = round(frequencies[peak_index], 2)
+    # --- HARMONIC OVERRIDE FIX ---
+    # Sometimes the overtone is much louder than the fundamental note.
+    # If the loudest frequency detected is roughly double (an octave up) from what we expect,
+    # and we have a target frequency, we just mathematically cut the result in half.
+    if target_hz > 0:
+        if (target_hz * 1.8) <= loudest_freq <= (target_hz * 2.2):
+            loudest_freq = loudest_freq / 2.0
+            
+    # --- THE AP CSP FILTER LOGIC ---
+    # Define our "Guitar Zone"
+    MIN_HZ = 70.0
+    MAX_HZ = 1500.0
+    VOLUME_THRESHOLD = 0.5 # Increase this if your mic is too sensitive!
+    
+    # If the frequency is wildly off (more than 40 Hz away from the target), just ignore it.
+    if target_hz > 0 and abs(loudest_freq - target_hz) > 40:
+        return
+    
+    # Only update the screen IF the sound is loud enough AND in the right range
+    if peak_volume > VOLUME_THRESHOLD and MIN_HZ <= loudest_freq <= MAX_HZ:
+        current_hz = round(loudest_freq, 2)
 
 def tune_string(index: int, button: ctk.CTkButton):
     global button_to_tune
-    global is_tuning, audio_stream
-    if button_to_tune == button:
+    global is_tuning, audio_stream, target_hz
+    if button_to_tune == button and is_tuning:
         is_tuning = False
         button_to_tune = None
+        note_to_tune = None
         if audio_stream:
             audio_stream.stop()
             audio_stream.close()
@@ -50,8 +78,12 @@ def tune_string(index: int, button: ctk.CTkButton):
         button_to_tune = button
         note = strings_to_tune[index][0]
         guitar_sound = play_synth_tone(note)
+        get_note_frequency = note_to_frequency(note)
 
-        audio_stream = sd.InputStream(channels=1, samplerate=44100, callback=process_audio)
+        note_to_tune = note
+        target_hz = get_note_frequency
+        print(f"{note_to_tune} -> {get_note_frequency}")
+        audio_stream = sd.InputStream(channels=1, samplerate=44100, blocksize=4096, callback=process_audio)
         audio_stream.start()
 
         update_tuning()
@@ -73,7 +105,6 @@ def tune_down(index: int, button: ctk.CTkButton):
         button.configure(text=new_note)
 
 
-ctk.set_appearance_mode("dark")
 app.configure(fg_color="#1a1a1a")
 
 strings_to_tune = [
@@ -170,17 +201,41 @@ def check_active_button():
         else:
             button.configure(fg_color="#1DB954", hover_color="#1ed760", text_color="#ffffff")
     
-    # Check again every 100 milliseconds
     app.after(5, check_active_button)
 
-# Start the checking loop
 check_active_button()
+
+
+tuner_meter = ctk.CTkProgressBar(master=app, width=500, height=50)
+tuner_meter.set(0.5)
+tuner_meter.place(x=175, y=700)
+
+tuner_text = ctk.CTkLabel(master=app,
+                          text="Start Tuning!",
+                          font=(".AppleSystemUIFont", 30, "bold"),
+                          bg_color="transparent")
+tuner_text.place(in_=tuner_meter, relx=0.5, rely=0.5, anchor="center")
+
 
 def update_tuning():
     if is_tuning:
-        print(current_hz)
-        
-        # Loop this function again in 50 milliseconds!
-        app.after(50, update_tuning)
+        if current_hz > 0:
+            diff = current_hz - target_hz
+            meter_value = 0.5 + (diff / 200)
+            tuner_meter.set(max(0, min(1, meter_value)))
+            tuner_text.configure(text=round(diff))
+
+            if abs(diff) <= 10:
+                tuner_meter.configure(progress_color="#1DB954")
+            elif diff > 10:
+                tuner_meter.configure(progress_color="#FF4B4B")
+            else:
+                tuner_meter.configure(progress_color="#3B8ED0")
+    else:
+        tuner_text.configure(text="Start Tuning!")
+        tuner_meter.set(0.5)
+        tuner_meter.configure(progress_color="#3B8ED0")
+    app.after(50, update_tuning)
+    
 
 app.mainloop()
