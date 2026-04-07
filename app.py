@@ -157,6 +157,15 @@ for i, string in enumerate(strings_to_tune):
     string_btn.place(x=string[1], y=string[2])
     string_buttons.append(string_btn)
 
+    separator = ctk.CTkLabel(master=app,
+                             text="",
+                             fg_color=separator_colors[i],
+                             anchor="center",
+                             width=70,
+                             height=60)
+    
+    separator.place(x=880, y=(i*125)+75)
+
     tuning_label = ctk.CTkLabel(master=app,
                                 text=f"{i+1}:",
                                 font=(UI_FONT, 30, "bold"),
@@ -191,15 +200,6 @@ for i, string in enumerate(strings_to_tune):
     
     tune_down_button.place(x=950, y=(i*125)+75)
     tune_down_button.configure(command=lambda idx=i, button=string_btn: tune_down(idx, button))
-
-    separator = ctk.CTkLabel(master=app,
-                             text="",
-                             fg_color=separator_colors[i],
-                             anchor="center",
-                             width=70,
-                             height=60)
-    
-    separator.place(x=880, y=(i*125)+75)
 
 def check_active_button():
     for button in string_buttons:
