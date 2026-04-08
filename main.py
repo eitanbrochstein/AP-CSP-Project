@@ -165,15 +165,16 @@ error_label = ctk.CTkButton(master=app,
                             anchor="center",
                             font=(UI_FONT, 30, "bold"),
                             fg_color="#FF746C",
-                            hover_color="#FF746C",
+                            hover_color="#A64A45",
                             height=70,
-                            corner_radius=50.0)
+                            corner_radius=0,
+                            width=650)
 
 error_label.place_forget()
 error_label.configure(command=lambda error=error_label: click_error_msg(error))
 
 def error_msg(message: str, title: str = "Error"):
-    error_label.place(x=175, y=50)
+    error_label.place(relx=0.5, y=50, anchor="center")
     error_label.configure(text=message)
 
 app.mainloop()
