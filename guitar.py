@@ -77,6 +77,12 @@ def process_audio(indata, frames, time, status):
     global current_hz
 
     audio_data = indata.flatten()
+
+    rms = np.sqrt(np.mean(audio_data ** 2))
+    rms_threshold = 0.05
+    if rms < rms_threshold:
+        return
+
     fft_data = np.fft.rfft(audio_data)
     frequencies = np.fft.rfftfreq(len(audio_data), 1.0 / 44100)
     magnitudes = np.abs(fft_data)
